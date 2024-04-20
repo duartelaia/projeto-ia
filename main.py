@@ -1,6 +1,6 @@
 from sys import stdin
 import numpy as np
-
+from search import *
 
 '''
 Esta classe representa os estados utilizados nos algoritmos de procura.
@@ -18,28 +18,9 @@ class PipeManiaState:
         de abertos nas procuras inf """
 
 '''
-Representação interna de uma peça
-'''
-class Part:
-
-    def __int__(self,string):
-        self.guidance = string[1]
-        self.type = string[0]
-
-    def getype(self):
-        return self.type
-
-    def getguidance(self):
-        return self.guidance
-    
-    def setguidance(self,guidance):
-        self.guidance = guidance
-
-'''
 Representação interna de uma grelha de PipeMania.
 '''
 class Board:
-
     def __init__(self,parts):
         self.board = np.array(parts)
 
@@ -51,27 +32,43 @@ class Board:
         """ Devolve os valores imediatamente à esquerda e à direita,
         respectivamente. """
         pass
-
+        
+    def print_board(self):
+        for i in self.board:
+            for j in i:
+                print(j, end=" ")
+            print()
+    
+    '''
+    Lê a instância do problema do standard input (stdin)
+    e retorna uma instância da classe Board.
+    '''
+    @staticmethod
+    def parse_instance():
+        lines = stdin.readlines()
+        parsedLines = []
+        for line in lines:
+            parsedLines.append(line.split())
+        board = Board(parsedLines)
+        return board
 
 class PipeMania(Problem):
     def __init__(self, initial_state: Board, goal_state: Board):
-        """ O construtor especifica o estado inicial. """
+        ''' O construtor especifica o estado inicial. '''
         pass
 
     '''
     Retorna uma lista de ações que podem ser executadas a
     partir do estado passado como argumento.
     '''
-    def actions(self, state: State):
+    def actions(self, state: PipeManiaState):
         pass
 
     '''
     Retorna o estado resultante de executar a 'action' sobre
-    'state' passado como argumento. A ação a executar deve ser uma
-    das presentes na lista obtida pela execução de
-    self.actions(state). 
+    'state' passado como argumento.
     '''
-    def result(self, state: State, action):
+    def result(self, state: PipeManiaState, action):
         pass
 
     '''
@@ -80,15 +77,17 @@ class PipeMania(Problem):
     def h(self, node: Node):
         pass
 
+class Part:
+    def __init__(self, string):
+        self.identification = string[0]
+        self.guidance = string[1]
+        self.top = None
+        self.bot = None
+        self.right = None
+        self.left = None
+    
+    
 
-'''
-Lê a instância do problema do standard input (stdin)
-e retorna uma instância da classe Board.
-'''
-@staticmethod
-def parse_instance():
-    lines = stdin.readlines().strip().split("\n")
-    n = len(lines)
-    parts = [lines[i].split("\t") for i in range(n)]
-    board = Board(n,n,[[Part(string) for string in parts[i]] for i in range(n)])
-    return board
+
+board = Board.parse_instance()
+board.print_board()
