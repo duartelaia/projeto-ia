@@ -1,4 +1,6 @@
 from sys import stdin
+import numpy as np
+
 
 '''
 Esta classe representa os estados utilizados nos algoritmos de procura.
@@ -15,12 +17,32 @@ class PipeManiaState:
         """ Este método é utilizado em caso de empate na gestão da lista
         de abertos nas procuras inf """
 
+'''
+Representação interna de uma peça
+'''
+class Part:
+
+    def __int__(self,string):
+        self.guidance = string[1]
+        self.type = string[0]
+
+    def getype(self):
+        return self.type
+
+    def getguidance(self):
+        return self.guidance
+    
+    def setguidance(self,guidance):
+        self.guidance = guidance
 
 '''
 Representação interna de uma grelha de PipeMania.
 '''
 class Board:
-    
+
+    def __init__(self,parts):
+        self.board = np.array(parts)
+
     def adjacent_vertical_values(self, row: int, col: int) -> (str, str):
         """ Devolve os valores imediatamente acima e abaixo,
         respectivamente. """
@@ -65,5 +87,8 @@ e retorna uma instância da classe Board.
 '''
 @staticmethod
 def parse_instance():
-    # ler input    
-    pass
+    lines = stdin.readlines().strip().split("\n")
+    n = len(lines)
+    parts = [lines[i].split("\t") for i in range(n)]
+    board = Board(n,n,[[Part(string) for string in parts[i]] for i in range(n)])
+    return board
