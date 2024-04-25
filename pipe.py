@@ -1,6 +1,18 @@
-from sys import stdin
 import numpy as np
-from search import *
+import sys
+from search import (
+    Problem,
+    Node,
+    astar_search,
+    breadth_first_tree_search,
+    depth_first_tree_search,
+    greedy_search,
+    recursive_best_first_search,
+)
+
+# Grupo 00:
+# 00000 Nome1
+# 00000 Nome2
 
 # Used for rotations
 OFF = 0
@@ -23,6 +35,7 @@ class PipeManiaState:
         Used in case of a draw in the list managment of opened in 
         informed searches
         '''
+        return self.id < other.id
 
 '''
 Representação interna de uma grelha de PipeMania.
@@ -31,16 +44,23 @@ class Board:
     def __init__(self,parts):
         self.board = np.array(parts)
 
-    def adjacent_vertical_values(self, row: int, col: int) -> (str, str):
+    def get_value(self, row: int, col: int) -> str:
+        '''
+        Returns the pipe on a specific position of the board
+        '''
+        return self.board[row][col]
+
+    def adjacent_values(self, row: int, col: int) -> (str, str):
         '''
         Returns the pieces directly up and down
+        The return values are either a Pipe or None
         '''
-        pass
-    def adjacent_horizontal_values(self, row: int, col: int) -> (str, str):
-        '''
-        Returns the pieces directly left and right
-        '''
-        pass
+        top = self.board[row - 1][col] if row - 1 >= 0 else None
+        bot = self.board[row + 1][col] if row + 1 < len(self.board) else None
+        left = self.board[row][col - 1] if col - 1 >= 0 else None
+        right = self.board[row][col + 1] if col + 1 < len(self.board[row]) else None
+
+        return (top, bot, right, left)
         
     def print_board(self):
         for i in self.board:
@@ -64,7 +84,7 @@ class Board:
     '''
     @staticmethod
     def parse_instance():
-        lines = stdin.readlines()
+        lines = sys.stdin.readlines()
         parsedLines = []
         for line in lines:
             current_line = line.split()
@@ -80,8 +100,9 @@ class Board:
 Problem to be solved by search
 '''
 class PipeMania(Problem):
-    def __init__(self, initial_state: Board, goal_state: Board):
-        pass
+    def __init__(self, initial_board: Board):
+        initial_state = PipeManiaState(initial_board)
+        super().__init__(initial_state)
 
     '''
     Returns a list of actions that can be executed from
@@ -96,6 +117,41 @@ class PipeMania(Problem):
     '''
     def result(self, state: PipeManiaState, action):
         pass
+    
+    '''
+    Returns true if the state passed as argument is a goal state.
+    '''
+    def goal_test(self, state: PipeManiaState):
+        board = state.board
+        for i in range(len(board.board)):
+            for j in range(len(board.board[i])):
+                adjacent_values = board.adjacent_values(i, j)
+
+                # Top verification
+                if adjacent_values[0] == None:
+                    if (board.get_value(i, j).top == ON):
+                        return False
+                else:
+                    if (board.get_value(i, j).top != adjacent_values[0].bot):
+                        return False
+                
+                # Right verification
+                if adjacent_values[2] == None:
+                    if board.get_value(i, j).right == ON:
+                        return False
+                else:
+                    if board.get_value(i, j).right != adjacent_values[2].left:
+                        return False
+
+                # If we are on the first column, verify left
+                if j == 0 and (board.get_value(i, j).left == ON):
+                    return False
+                
+                # If we are on the last line, verify bot
+                if i == len(board.board)-1 and (board.get_value(i, j).bot == ON):
+                    return False
+        
+        return True
 
     '''
     Heuristic function used in A*
@@ -354,5 +410,7 @@ class ConPipe(Pipe):
         return possibilities
 
 
-board = Board.parse_instance()
-board.print_board()
+if __name__ == "__main__":
+    board = Board.parse_instance()
+    problem = PipeMania(board)
+    print(problem.goal_test(problem.initial))
