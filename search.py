@@ -98,6 +98,7 @@ class Node:
 
     def child_node(self, problem, action):
         """[Figure 3.10]"""
+        print(action)
         next_state = problem.result(self.state, action)
         next_node = Node(next_state, self, action, problem.path_cost(self.path_cost, self.state, action, next_state))
         return next_node
@@ -204,7 +205,6 @@ def depth_first_tree_search(problem):
     """
 
     frontier = [Node(problem.initial)]  # Stack
-
     while frontier:
         node = frontier.pop()
         if problem.goal_test(node.state):
@@ -223,7 +223,6 @@ def depth_first_graph_search(problem):
     If two paths reach a state, only use the first one.
     """
     frontier = [(Node(problem.initial))]  # Stack
-
     explored = set()
     while frontier:
         node = frontier.pop()

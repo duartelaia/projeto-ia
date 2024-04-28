@@ -20,146 +20,6 @@ ON = 1
 UNKNOWN = 2
 
 '''
-Represents the states used in the searching algorithms
-'''
-class PipeManiaState:
-    state_id = 0
-
-    def __init__(self, board):
-        self.board = board
-        self.id = PipeManiaState.state_id
-        PipeManiaState.state_id += 1
-
-    def __lt__(self, other):
-        '''
-        Used in case of a draw in the list managment of opened in 
-        informed searches
-        '''
-        return self.id < other.id
-
-'''
-Representação interna de uma grelha de PipeMania.
-'''
-class Board:
-    def __init__(self,parts):
-        self.board = np.array(parts)
-
-    def get_value(self, row: int, col: int) -> str:
-        '''
-        Returns the pipe on a specific position of the board
-        '''
-        return self.board[row][col]
-
-    def adjacent_values(self, row: int, col: int) -> (str, str):
-        '''
-        Returns the pieces directly up and down
-        The return values are either a Pipe or None
-        '''
-        top = self.board[row - 1][col] if row - 1 >= 0 else None
-        bot = self.board[row + 1][col] if row + 1 < len(self.board) else None
-        left = self.board[row][col - 1] if col - 1 >= 0 else None
-        right = self.board[row][col + 1] if col + 1 < len(self.board[row]) else None
-
-        return (top, bot, right, left)
-        
-    def print_board(self):
-        for i in self.board:
-            for j in range(3):
-                for k in range(len(i)):
-                    print(i[k].get_pipe_representation()[j], end='|')
-                print()
-            print('-----+-----+-----|')
-    
-    def print_board_id(self):
-        for i in self.board:
-            for j in range(len(i)):
-                if j != 0:
-                    print(' ', end='')
-                i[j].print_pipe_id()
-            print()
-    
-    '''
-    Reads the instance of the problem from stdin and
-    returns an instance of type Board
-    '''
-    @staticmethod
-    def parse_instance():
-        lines = sys.stdin.readlines()
-        parsedLines = []
-        for line in lines:
-            current_line = line.split()
-            parsed_current_line = []
-            for pipe in current_line:
-                parsed_current_line.append(Pipe.create_pipe(pipe))
-            parsedLines.append(parsed_current_line)
-        
-        board = Board(parsedLines)
-        return board
-
-'''
-Problem to be solved by search
-'''
-class PipeMania(Problem):
-    def __init__(self, initial_board: Board):
-        initial_state = PipeManiaState(initial_board)
-        super().__init__(initial_state)
-
-    '''
-    Returns a list of actions that can be executed from
-    the state passed as argument
-    '''
-    def actions(self, state: PipeManiaState):
-        pass
-
-    '''
-    Returns the resulting state of executing an action on
-    the 'state' passed as argument
-    '''
-    def result(self, state: PipeManiaState, action):
-        pass
-    
-    '''
-    Returns true if the state passed as argument is a goal state.
-    '''
-    def goal_test(self, state: PipeManiaState):
-        board = state.board
-        for i in range(len(board.board)):
-            for j in range(len(board.board[i])):
-                adjacent_values = board.adjacent_values(i, j)
-
-                # Top verification
-                if adjacent_values[0] == None:
-                    if (board.get_value(i, j).top == ON):
-                        return False
-                else:
-                    if (board.get_value(i, j).top != adjacent_values[0].bot):
-                        return False
-                
-                # Right verification
-                if adjacent_values[2] == None:
-                    if board.get_value(i, j).right == ON:
-                        return False
-                else:
-                    if board.get_value(i, j).right != adjacent_values[2].left:
-                        return False
-
-                # If we are on the first column, verify left
-                if j == 0 and (board.get_value(i, j).left == ON):
-                    return False
-                
-                # If we are on the last line, verify bot
-                if i == len(board.board)-1 and (board.get_value(i, j).bot == ON):
-                    return False
-        
-        return True
-
-    '''
-    Heuristic function used in A*
-    '''
-    def h(self, node: Node):
-        pass
-
-'''
 Representation of each piece on the board
 '''
 class Pipe:
@@ -204,6 +64,12 @@ class Pipe:
         self.right = right
         self.left = left
         self.bits_to_guidance()
+
+    def get_pipe_bits(self):
+        return (self.top, self.bot, self.right, self.left)
+
+    def get_pipe_id(self):
+        return self.identification+self.guidance
     
     def print_parser(self, i):
         return '1' if i == ON else '.'
@@ -213,6 +79,12 @@ class Pipe:
     
     def get_pipe_representation(self):
         return ('. '+self.print_parser(self.top)+' .', self.print_parser(self.left)+' 1 '+self.print_parser(self.right), '. '+self.print_parser(self.bot)+' .')
+
+    @staticmethod
+    def copy_pipe(pipe):
+        new_pipe = Pipe.create_pipe(pipe.get_pipe_id())
+        new_pipe.is_right = pipe.is_right
+        return new_pipe
 
     @staticmethod
     def create_pipe(string):
@@ -409,8 +281,167 @@ class ConPipe(Pipe):
 
         return possibilities
 
+'''
+Represents the states used in the searching algorithms
+'''
+class PipeManiaState:
+    state_id = 0
+
+    def __init__(self, board):
+        self.board = board
+        self.id = PipeManiaState.state_id
+        PipeManiaState.state_id += 1
+
+    def __lt__(self, other):
+        '''
+        Used in case of a draw in the list managment of opened in 
+        informed searches
+        '''
+        return self.id < other.id
+
+'''
+Representação interna de uma grelha de PipeMania.
+'''
+class Board:
+    def __init__(self,parts):
+        self.board = np.array(parts)
+
+    def get_value(self, row: int, col: int) -> Pipe:
+        '''
+        Returns the pipe on a specific position of the board
+        '''
+        return self.board[row][col]
+
+    def adjacent_values(self, row: int, col: int) -> tuple:
+        '''
+        Returns the pieces directly up and down
+        The return values are either a Pipe or None
+        '''
+        top = self.board[row - 1][col] if row - 1 >= 0 else None
+        bot = self.board[row + 1][col] if row + 1 < len(self.board) else None
+        left = self.board[row][col - 1] if col - 1 >= 0 else None
+        right = self.board[row][col + 1] if col + 1 < len(self.board[row]) else None
+
+        return (top, bot, right, left)
+
+    def print_board(self):
+        for i in self.board:
+            for j in range(3):
+                for k in range(len(i)):
+                    print(i[k].get_pipe_representation()[j], end='|')
+                print()
+            print('-----+'*len(self.board[0]))
+    
+    def print_board_id(self):
+        for i in self.board:
+            for j in range(len(i)):
+                if j != 0:
+                    print(' ', end='')
+                i[j].print_pipe_id()
+            print()
+    
+    @staticmethod
+    def copy_board(board):
+        line = len(board.board)
+        col = len(board.board[0])
+        new_board = [[0 for i in range(col)] for j in range(line)]
+        for i in range(line):
+            for j in range(col):
+                new_board[i][j] = Pipe.copy_pipe(board.board[i][j])
+
+        return Board(new_board)
+
+    '''
+    Reads the instance of the problem from stdin and
+    returns an instance of type Board
+    '''
+    @staticmethod
+    def parse_instance():
+        lines = sys.stdin.readlines()
+        parsedLines = []
+        for line in lines:
+            current_line = line.split()
+            parsed_current_line = []
+            for pipe in current_line:
+                parsed_current_line.append(Pipe.create_pipe(pipe))
+            parsedLines.append(parsed_current_line)
+        
+        board = Board(parsedLines)
+        return board
+
+'''
+Problem to be solved by search
+'''
+class PipeMania(Problem):
+    def __init__(self, initial_board: Board):
+        initial_state = PipeManiaState(initial_board)
+        super().__init__(initial_state)
+
+    '''
+    Returns a list of actions that can be executed from
+    the state passed as argument
+    '''
+    def actions(self, state: PipeManiaState):
+        board = state.board
+        board.get_value(0, 2).rotate((OFF, ON, OFF, ON))
+        stack = []
+        return [[(0,0), board.get_value(0, 0).get_pipe_bits()]]
+
+    '''
+    Returns the resulting state of executing an action on
+    the 'state' passed as argument
+    '''
+    def result(self, state: PipeManiaState, action):
+        new_board = Board.copy_board(state.board)
+        position = action[0]
+        rotation = action[1]
+        new_board.get_value(position[0], position[1]).rotate(rotation)
+        return PipeManiaState(new_board)
+    
+    '''
+    Returns true if the state passed as argument is a goal state.
+    '''
+    def goal_test(self, state: PipeManiaState):
+        board = state.board
+        for i in range(len(board.board)):
+            for j in range(len(board.board[i])):
+                adjacent_values = board.adjacent_values(i, j)
+
+                # Top verification
+                if adjacent_values[0] == None:
+                    if (board.get_value(i, j).top == ON):
+                        return False
+                else:
+                    if (board.get_value(i, j).top != adjacent_values[0].bot):
+                        return False
+                
+                # Right verification
+                if adjacent_values[2] == None:
+                    if board.get_value(i, j).right == ON:
+                        return False
+                else:
+                    if board.get_value(i, j).right != adjacent_values[2].left:
+                        return False
+
+                # If we are on the first column, verify left
+                if j == 0 and (board.get_value(i, j).left == ON):
+                    return False
+                
+                # If we are on the last line, verify bot
+                if i == len(board.board)-1 and (board.get_value(i, j).bot == ON):
+                    return False
+        
+        return True
+
+    '''
+    Heuristic function used in A*
+    '''
+    def h(self, node: Node):
+        pass
+
 
 if __name__ == "__main__":
     board = Board.parse_instance()
     problem = PipeMania(board)
-    print(problem.goal_test(problem.initial))
+    goal_node = depth_first_tree_search(problem)
+    goal_node.state.board.print_board()
