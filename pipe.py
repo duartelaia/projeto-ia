@@ -10,9 +10,9 @@ from search import (
     recursive_best_first_search,
 )
 
-# Grupo 00:
-# 00000 Nome1
-# 00000 Nome2
+# Grupo 05:
+# ist1106876 Duarte Laia
+# ist1106929 Eduardo Silva
 
 # Used for rotations
 OFF = 0
