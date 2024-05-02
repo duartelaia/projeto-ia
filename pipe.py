@@ -65,6 +65,21 @@ class Pipe:
         self.left = left
         self.bits_to_guidance()
 
+    def verify_posibilities(self, possibilities, bits):
+        for i in range(4):
+            j = 0
+            while(j < len(possibilities)):
+                # Remove a possibility if the bit we want is ON
+                # and on the possibility is OFF, and vice-versa
+                if(bits[i] == ON and possibilities[j][i] == OFF):
+                    possibilities.pop(j)
+                elif(bits[i] == OFF and possibilities[j][i] == ON):
+                    possibilities.pop(j)
+                else:
+                    j += 1
+
+        return possibilities
+
     def get_pipe_bits(self):
         return (self.top, self.bot, self.right, self.left)
 
@@ -131,23 +146,7 @@ class ClosePipe(Pipe):
         possibilities = [[ON, OFF, OFF, OFF], [OFF, ON, OFF, OFF],
                          [OFF, OFF, ON, OFF], [OFF, OFF, OFF, ON]]
 
-        for i in range(4):
-            if (bits[i] == ON):
-                # In this case, there is only one possibility,
-                # so create that possibility and return it
-                possibilities = [[OFF for i in range(4)]]
-                possibilities[0][i] = ON
-                break
-
-            elif (bits[i] == OFF):
-                # In this case, we know that a specific possiblity
-                # is impossible, so create that possibility and
-                # remove it from the list
-                comb = [OFF for i in range(4)]
-                comb[i] = ON
-                possibilities.remove(comb)
-
-        return possibilities
+        return super().verify_posibilities(possibilities, bits)
     
 class BifPipe(Pipe):
 
@@ -184,23 +183,7 @@ class BifPipe(Pipe):
         possibilities = [[OFF, ON, ON, ON], [ON, OFF, ON, ON],
                          [ON, ON, OFF, ON], [ON, ON, ON, OFF]]
         
-        for i in range(4):
-            if (bits[i] == OFF):
-                # In this case, there is only one possibility,
-                # so create that possibility and return it
-                possibilities = [[ON for i in range(4)]]
-                possibilities[0][i] = OFF
-                break
-
-            elif (bits[i] == ON):
-                # In this case, we know that a specific possiblity
-                # is impossible, so create that possibility and
-                # remove it from the list
-                comb = [ON for i in range(4)]
-                comb[i] = OFF
-                possibilities.remove(comb)
-
-        return possibilities
+        return super().verify_posibilities(possibilities, bits)
     
 class CurvePipe(Pipe):
     def __init__(self, string):
@@ -236,19 +219,7 @@ class CurvePipe(Pipe):
         possibilities = [[ON, OFF, OFF, ON], [OFF, ON, ON, OFF],
                          [OFF, ON, OFF, ON], [ON, OFF, ON, OFF]]
         
-        for i in range(4):
-            j = 0
-            while(j < len(possibilities)):
-                # Remove a possibility if the bit we want is ON
-                # and on the possibility is OFF, and vice-versa
-                if(bits[i] == ON and possibilities[j][i] == OFF):
-                    possibilities.pop(j)
-                elif(bits[i] == OFF and possibilities[j][i] == ON):
-                    possibilities.pop(j)
-                else:
-                    j += 1
-                    
-        return possibilities
+        return super().verify_posibilities(possibilities, bits)
 
 class ConPipe(Pipe):
     def __init__(self, string):
@@ -273,13 +244,7 @@ class ConPipe(Pipe):
         bits = (top, bot, right, left)
         possibilities = [[ON, ON, OFF, OFF], [OFF, OFF, ON, ON]]
 
-        for i in range(4):
-            if bits[i] == ON:
-                return [possibilities[0]] if i < 2 else [possibilities[1]]
-            if bits[i] == OFF:
-                return [possibilities[1]] if i < 2 else [possibilities[0]]
-
-        return possibilities
+        return super().verify_posibilities(possibilities, bits)
 
 '''
 Represents the states used in the searching algorithms
@@ -336,7 +301,7 @@ class Board:
         for i in self.board:
             for j in range(len(i)):
                 if j != 0:
-                    print(' ', end='')
+                    print('\t', end='')
                 i[j].print_pipe_id()
             print()
     
@@ -380,12 +345,55 @@ class PipeMania(Problem):
     '''
     Returns a list of actions that can be executed from
     the state passed as argument
+    An action is a list with the position of the pipe
+    and the rotation to be executed
     '''
     def actions(self, state: PipeManiaState):
         board = state.board
-        board.get_value(0, 2).rotate((OFF, ON, OFF, ON))
-        stack = []
-        return [[(0,0), board.get_value(0, 0).get_pipe_bits()]]
+        
+        wrong_pipe_pos = 0
+
+        # Check if there is a pipe which isn't right
+        for i in range(len(board.board)):
+            for j in range(len(board.board[i])):
+                if not board.get_value(i, j).is_right:
+                    wrong_pipe_pos = (i, j)
+                    break
+            if wrong_pipe_pos != 0:
+                break
+
+        if wrong_pipe_pos == 0:
+            return []
+        
+        # Start the algorithmic part
+        stack = [wrong_pipe_pos]
+
+        while len(stack) > 0:
+            current_pos = stack.pop()
+            current_pipe = board.get_value(current_pos[0], current_pos[1])
+            current_pipe.is_right = True
+
+            # Get the adjacent values
+            adjacent_values = board.adjacent_values(current_pos[0], current_pos[1])
+
+            top_rot = bot_rot = right_rot = left_rot = OFF
+
+            # Get the possible rotations
+            if adjacent_values[0]:
+                top_rot = adjacent_values[0].bot if adjacent_values[0].is_right else UNKNOWN
+            if adjacent_values[1]:
+                bot_rot = adjacent_values[1].top if adjacent_values[1].is_right else UNKNOWN
+            if adjacent_values[2]:
+                right_rot = adjacent_values[2].left if adjacent_values[2].is_right else UNKNOWN
+            if adjacent_values[3]:
+                left_rot = adjacent_values[3].right if adjacent_values[3].is_right else UNKNOWN
+
+            possibilities = current_pipe.rotation_posibilities(top_rot, bot_rot, right_rot, left_rot)
+
+            #print(possibilities)
+        
+        return [[current_pos, possibility] for possibility in possibilities]
+            
 
     '''
     Returns the resulting state of executing an action on
@@ -442,6 +450,10 @@ class PipeMania(Problem):
 
 if __name__ == "__main__":
     board = Board.parse_instance()
+
     problem = PipeMania(board)
     goal_node = depth_first_tree_search(problem)
-    goal_node.state.board.print_board()
+    if goal_node:
+        goal_node.state.board.print_board_id()
+    else:
+        print("tamale")
