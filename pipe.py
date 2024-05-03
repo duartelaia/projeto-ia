@@ -408,7 +408,7 @@ class PipeMania(Problem):
     
     '''
     Returns true if the state passed as argument is a goal state.
-    '''
+    
     def goal_test(self, state: PipeManiaState):
         board = state.board
         for i in range(len(board.board)):
@@ -440,6 +440,42 @@ class PipeMania(Problem):
                     return False
         
         return True
+    '''
+
+    def goal_test(self, state: PipeManiaState):
+        stack = [(0, 0)]  
+        visited = set()
+
+        while stack:
+            row, col = stack.pop()
+            visited.add((row, col))
+
+            # Get the current pipe and its adjacent values
+            current_pipe = state.board.get_value(row, col)
+            adjacent_values = state.board.adjacent_values(row, col)
+
+            # Check if there is an invalid connection and if there is a connection, add to the stack
+            if (adjacent_values[0] is None and current_pipe.top == ON) or (adjacent_values[0] and (adjacent_values[0].bot != current_pipe.top)):
+                return False
+            elif current_pipe.top == ON and (row - 1, col) not in visited:
+                stack.append((row - 1, col))
+
+            if (adjacent_values[1] is None and current_pipe.bot == ON) or (adjacent_values[1] and (adjacent_values[1].top != current_pipe.bot)):
+                return False
+            elif current_pipe.bot == ON and (row + 1, col) not in visited:
+                stack.append((row + 1, col))
+
+            if (adjacent_values[2] is None and current_pipe.right == ON) or (adjacent_values[2] and (adjacent_values[2].left != current_pipe.right)):
+                return False
+            elif current_pipe.right == ON and (row, col + 1) not in visited:
+                stack.append((row, col + 1))
+
+            if (adjacent_values[3] is None and current_pipe.left == ON) or (adjacent_values[3] and (adjacent_values[3].right != current_pipe.left)):
+                return False
+            elif current_pipe.left == ON and (row, col - 1) not in visited:
+                stack.append((row, col - 1))
+
+        return len(visited) == len(state.board.board)*len(state.board.board[0])
 
     '''
     Heuristic function used in A*
