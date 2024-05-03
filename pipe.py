@@ -389,7 +389,7 @@ class PipeMania(Problem):
                 left_rot = adjacent_values[3].right if adjacent_values[3].is_right else UNKNOWN
 
             possibilities = current_pipe.rotation_posibilities(top_rot, bot_rot, right_rot, left_rot)
-
+            
             # If there is only one possibility, rotate the pipe and add the adjacent pipes to the stack
             if len(possibilities) == 1:
                 current_pipe.rotate(possibilities[0])
@@ -466,7 +466,6 @@ class PipeMania(Problem):
 
 if __name__ == "__main__":
     board = Board.parse_instance()
-
     problem = PipeMania(board)
     goal_node = depth_first_tree_search(problem)
     if goal_node:
