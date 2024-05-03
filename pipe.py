@@ -390,8 +390,21 @@ class PipeMania(Problem):
 
             possibilities = current_pipe.rotation_posibilities(top_rot, bot_rot, right_rot, left_rot)
 
-            #print(possibilities)
-        
+            # If there is only one possibility, rotate the pipe and add the adjacent pipes to the stack
+            if len(possibilities) == 1:
+                current_pipe.rotate(possibilities[0])
+                if adjacent_values[0] and not adjacent_values[0].is_right:
+                    stack.append((current_pos[0] - 1, current_pos[1]))
+                if adjacent_values[1] and not adjacent_values[1].is_right:
+                    stack.append((current_pos[0] + 1, current_pos[1]))
+                if adjacent_values[2] and not adjacent_values[2].is_right:
+                    stack.append((current_pos[0], current_pos[1] + 1))
+                if adjacent_values[3] and not adjacent_values[3].is_right:
+                    stack.append((current_pos[0], current_pos[1] - 1))
+            else:
+                current_pipe.is_right = False
+
+        current_pipe.is_right = True
         return [[current_pos, possibility] for possibility in possibilities]
             
 
@@ -408,40 +421,7 @@ class PipeMania(Problem):
     
     '''
     Returns true if the state passed as argument is a goal state.
-    
-    def goal_test(self, state: PipeManiaState):
-        board = state.board
-        for i in range(len(board.board)):
-            for j in range(len(board.board[i])):
-                adjacent_values = board.adjacent_values(i, j)
-
-                # Top verification
-                if adjacent_values[0] == None:
-                    if (board.get_value(i, j).top == ON):
-                        return False
-                else:
-                    if (board.get_value(i, j).top != adjacent_values[0].bot):
-                        return False
-                
-                # Right verification
-                if adjacent_values[2] == None:
-                    if board.get_value(i, j).right == ON:
-                        return False
-                else:
-                    if board.get_value(i, j).right != adjacent_values[2].left:
-                        return False
-
-                # If we are on the first column, verify left
-                if j == 0 and (board.get_value(i, j).left == ON):
-                    return False
-                
-                # If we are on the last line, verify bot
-                if i == len(board.board)-1 and (board.get_value(i, j).bot == ON):
-                    return False
-        
-        return True
     '''
-
     def goal_test(self, state: PipeManiaState):
         stack = [(0, 0)]  
         visited = set()
@@ -454,7 +434,7 @@ class PipeMania(Problem):
             current_pipe = state.board.get_value(row, col)
             adjacent_values = state.board.adjacent_values(row, col)
 
-            # Check if there is an invalid connection and if there is a connection, add to the stack
+            # Check if there is an invalid connection. If there is a connection and it isnt invalid, add to the stack
             if (adjacent_values[0] is None and current_pipe.top == ON) or (adjacent_values[0] and (adjacent_values[0].bot != current_pipe.top)):
                 return False
             elif current_pipe.top == ON and (row - 1, col) not in visited:
