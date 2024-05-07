@@ -401,6 +401,8 @@ class PipeMania(Problem):
                     stack.append((current_pos[0], current_pos[1] + 1))
                 if adjacent_values[3] and not adjacent_values[3].is_right:
                     stack.append((current_pos[0], current_pos[1] - 1))
+            elif len(possibilities) == 0:
+                return []
             else:
                 current_pipe.is_right = False
 
@@ -461,7 +463,7 @@ class PipeMania(Problem):
     Heuristic function used in A*
     '''
     def h(self, node: Node):
-        pass
+        return 0
 
 
 if __name__ == "__main__":
