@@ -86,6 +86,9 @@ class Pipe:
     def get_pipe_id(self):
         return self.identification+self.guidance
     
+    def get_pipe_id_state(self):
+        return self.identification+self.guidance+str(int(self.is_right))
+    
     def print_parser(self, i):
         return '1' if i == ON else '.'
 
@@ -269,7 +272,10 @@ Representação interna de uma grelha de PipeMania.
 '''
 class Board:
     def __init__(self,parts):
-        self.board = np.array(parts)
+        self.id_board = np.array(parts)
+        self.lines = len(parts)
+        self.columns = len(parts[0])
+        self.board = 0
 
     def get_value(self, row: int, col: int) -> Pipe:
         '''
@@ -298,6 +304,8 @@ class Board:
             print('-----+'*len(self.board[0]))
     
     def print_board_id(self):
+        if not self.board:
+            return
         for i in self.board:
             for j in range(len(i)):
                 if j != 0:
@@ -305,14 +313,29 @@ class Board:
                 i[j].print_pipe_id()
             print()
     
+    def activate_board(self):
+        self.board = [[0 for i in range(self.columns)] for j in range(self.lines)]
+        for i in range(self.lines):
+            for j in range(self.columns):
+                self.board[i][j] = Pipe.create_pipe(self.id_board[i][j][:2])
+                self.board[i][j].is_right = int(self.id_board[i][j][2])
+    
+    def deactivate_board(self):
+        # Update the id board
+        new_board = [[0 for i in range(self.columns)] for j in range(self.lines)]
+        for i in range(self.lines):
+            for j in range(self.columns):
+                new_board[i][j] = self.board[i][j].get_pipe_id_state()
+        self.id_board = np.array(new_board)
+        # Forget the pipes board
+        self.board = 0
+
     @staticmethod
     def copy_board(board):
-        line = len(board.board)
-        col = len(board.board[0])
-        new_board = [[0 for i in range(col)] for j in range(line)]
-        for i in range(line):
-            for j in range(col):
-                new_board[i][j] = Pipe.copy_pipe(board.board[i][j])
+        new_board = [[0 for i in range(board.columns)] for j in range(board.lines)]
+        for i in range(board.lines):
+            for j in range(board.columns):
+                new_board[i][j] = board.id_board[i][j]
 
         return Board(new_board)
 
@@ -328,7 +351,7 @@ class Board:
             current_line = line.split()
             parsed_current_line = []
             for pipe in current_line:
-                parsed_current_line.append(Pipe.create_pipe(pipe))
+                parsed_current_line.append(pipe+'0')
             parsedLines.append(parsed_current_line)
         
         board = Board(parsedLines)
@@ -350,7 +373,8 @@ class PipeMania(Problem):
     '''
     def actions(self, state: PipeManiaState):
         board = state.board
-        
+        board.activate_board()
+
         wrong_pipe_pos = 0
 
         # Check if there is a pipe which isn't right
@@ -407,6 +431,7 @@ class PipeMania(Problem):
                 current_pipe.is_right = False
 
         current_pipe.is_right = True
+        board.deactivate_board()
         return [[current_pos, possibility] for possibility in possibilities]
             
 
@@ -416,9 +441,11 @@ class PipeMania(Problem):
     '''
     def result(self, state: PipeManiaState, action):
         new_board = Board.copy_board(state.board)
+        new_board.activate_board()
         position = action[0]
         rotation = action[1]
         new_board.get_value(position[0], position[1]).rotate(rotation)
+        new_board.deactivate_board()
         return PipeManiaState(new_board)
     
     '''
@@ -427,6 +454,8 @@ class PipeMania(Problem):
     def goal_test(self, state: PipeManiaState):
         stack = [(0, 0)]  
         visited = set()
+
+        state.board.activate_board()
 
         while stack:
             row, col = stack.pop()
@@ -457,7 +486,9 @@ class PipeMania(Problem):
             elif current_pipe.left == ON and (row, col - 1) not in visited:
                 stack.append((row, col - 1))
 
-        return len(visited) == len(state.board.board)*len(state.board.board[0])
+
+        state.board.deactivate_board()
+        return len(visited) == len(state.board.id_board)*len(state.board.id_board[0])
 
     '''
     Heuristic function used in A*
@@ -471,6 +502,7 @@ if __name__ == "__main__":
     problem = PipeMania(board)
     goal_node = depth_first_tree_search(problem)
     if goal_node:
+        goal_node.state.board.activate_board()
         goal_node.state.board.print_board_id()
     else:
         print("tamale")
