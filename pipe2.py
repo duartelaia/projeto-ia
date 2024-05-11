@@ -88,8 +88,10 @@ Represents the states used in the searching algorithms
 class PipeManiaState:
     state_id = 0
 
-    def __init__(self, board):
+    def __init__(self, board, right_counter):
         self.board = board
+        self.close = False
+        self.right_counter = right_counter
         self.id = PipeManiaState.state_id
         PipeManiaState.state_id += 1
 
@@ -173,6 +175,14 @@ class Board:
                     print('\t', end='')
                 print(self.board[i][j][:2],end='')
             print()
+    
+    def print_board_right(self):
+        for i in range(self.lines):
+            for j in range(self.columns):
+                if j != 0:
+                    print('\t', end='')
+                print(self.board[i][j],end='')
+            print()
 
     @staticmethod
     def copy_board(board):
@@ -193,7 +203,7 @@ class Board:
                 parsed_current_line.append(pipe+'0')
             parsedLines.append(parsed_current_line)
         
-        board = Board(np.array(parsedLines))
+        board = Board(np.array(parsedLines, dtype='<U3'))
         return board
 
 '''
@@ -201,7 +211,7 @@ Problem to be solved by search
 '''
 class PipeMania(Problem):
     def __init__(self, initial_board: Board):
-        initial_state = PipeManiaState(initial_board)
+        initial_state = PipeManiaState(initial_board, 0)
         super().__init__(initial_state)
 
     '''
@@ -211,6 +221,10 @@ class PipeMania(Problem):
     and the rotation to be executed
     '''
     def actions(self, state: PipeManiaState):
+
+        if state.close:
+            return []
+
         board = state.board
 
         wrong_pipe_pos = 0
@@ -229,10 +243,15 @@ class PipeMania(Problem):
         
         # Start the algorithmic part
         stack = [wrong_pipe_pos]
+        max_count = (state.board.columns*state.board.lines) * 0.15
+        count = 0
 
-        while len(stack) > 0:
+        while len(stack) > 0 and count <= max_count:
+            count += 1
             current_pos = stack.pop()
-            current_pipe = board.get_value(current_pos[0], current_pos[1])
+            if(not board.is_right(current_pos[0], current_pos[1])):
+                state.right_counter += 1
+
             board.set_right(current_pos[0], current_pos[1], '1')
 
             # Get the adjacent values
@@ -265,11 +284,17 @@ class PipeMania(Problem):
                 if adjacent_values[3] and not board.is_right(adjacent_positions[3][0], adjacent_positions[3][1]):
                     stack.append((current_pos[0], current_pos[1] - 1))
             elif len(possibilities) == 0:
+                state.right_counter -= 1
                 return []
             else:
                 board.set_right(current_pos[0], current_pos[1], '0')
+                state.right_counter -= 1
 
+
+        if(not board.is_right(current_pos[0], current_pos[1])):
+                state.right_counter += 1
         board.set_right(current_pos[0], current_pos[1], '1')
+        
         return [[current_pos, possibility] for possibility in possibilities]
             
 
@@ -280,7 +305,7 @@ class PipeMania(Problem):
     def result(self, state: PipeManiaState, action):
         new_board = Board.copy_board(state.board)
         new_board.rotate(action)
-        return PipeManiaState(new_board)
+        return PipeManiaState(new_board, state.right_counter)
     
     '''
     Returns true if the state passed as argument is a goal state.
@@ -288,6 +313,9 @@ class PipeMania(Problem):
     def goal_test(self, state: PipeManiaState):
         stack = [(0, 0)]  
         visited = set()
+
+        if state.right_counter != state.board.columns*state.board.lines:
+            return False
 
         while stack:
             row, col = stack.pop()
@@ -318,14 +346,16 @@ class PipeMania(Problem):
             elif current_pipe[3] == ON and (row, col - 1) not in visited:
                 stack.append((row, col - 1))
 
+        if state.right_counter != len(visited):
+            state.close = True
+
         return len(visited) == state.board.columns*state.board.lines
 
     '''
     Heuristic function used in A*
     '''
     def h(self, node: Node):
-        return 0
-
+        pass
 
 if __name__ == "__main__":
     b1 = Board.parse_instance()
