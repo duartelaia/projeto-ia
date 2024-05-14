@@ -206,6 +206,69 @@ class Board:
         board = Board(np.array(parsedLines, dtype='<U3'))
         return board
 
+def get_possibilities(state, position):
+    # Get the adjacent values
+    board = state.board
+    adjacent_values = board.adjacent_values(position[0], position[1])
+    adjacent_positions = board.adjacent_positions(position[0], position[1])
+
+    top_rot = bot_rot = right_rot = left_rot = OFF
+
+    # Get the possible rotations
+    if adjacent_values[0]:
+        top_rot = adjacent_values[0][1] if board.is_right(adjacent_positions[0][0], adjacent_positions[0][1]) else UNKNOWN
+    if adjacent_values[1]:
+        bot_rot = adjacent_values[1][0] if board.is_right(adjacent_positions[1][0], adjacent_positions[1][1]) else UNKNOWN
+    if adjacent_values[2]:
+        right_rot = adjacent_values[2][3] if board.is_right(adjacent_positions[2][0], adjacent_positions[2][1]) else UNKNOWN
+    if adjacent_values[3]:
+        left_rot = adjacent_values[3][2] if board.is_right(adjacent_positions[3][0], adjacent_positions[3][1]) else UNKNOWN
+
+    return get_possible_rotations(board.get_id(position[0], position[1]),top_rot, bot_rot, right_rot, left_rot)
+
+'''
+Function that makes inferences on the board, based
+on a starting position
+Returns False if the board is invalid, otherwhise
+returns True
+'''
+def make_inferences(state, first_pos):
+    board = state.board
+    stack = [first_pos]
+    max_count = (state.board.columns*state.board.lines) * 1
+    count = 0
+
+    while len(stack) > 0 and count <= max_count:
+        count += 1
+        current_pos = stack.pop()
+        if(not board.is_right(current_pos[0], current_pos[1])):
+            state.right_counter += 1
+
+        board.set_right(current_pos[0], current_pos[1], '1')
+
+        adjacent_values = board.adjacent_values(current_pos[0], current_pos[1])
+        adjacent_positions = board.adjacent_positions(current_pos[0], current_pos[1])
+        possibilities = get_possibilities(state, current_pos)
+        
+        # If there is only one possibility, rotate the pipe and add the adjacent pipes to the stack
+        if len(possibilities) == 1:
+            board.rotate([current_pos,possibilities[0]])
+            if adjacent_values[0] and not board.is_right(adjacent_positions[0][0], adjacent_positions[0][1]):
+                stack.append((current_pos[0] - 1, current_pos[1]))
+            if adjacent_values[1] and not board.is_right(adjacent_positions[1][0], adjacent_positions[1][1]):
+                stack.append((current_pos[0] + 1, current_pos[1]))
+            if adjacent_values[2] and not board.is_right(adjacent_positions[2][0], adjacent_positions[2][1]):
+                stack.append((current_pos[0], current_pos[1] + 1))
+            if adjacent_values[3] and not board.is_right(adjacent_positions[3][0], adjacent_positions[3][1]):
+                stack.append((current_pos[0], current_pos[1] - 1))
+        elif len(possibilities) == 0:
+            state.right_counter -= 1
+            return False
+        else:
+            board.set_right(current_pos[0], current_pos[1], '0')
+            state.right_counter -= 1
+    return True
+
 '''
 Problem to be solved by search
 '''
@@ -228,74 +291,34 @@ class PipeMania(Problem):
         board = state.board
 
         wrong_pipe_pos = 0
+        wrong_pipe_possibilities = [0, 0, 0, 0, 0]
 
         # Check if there is a pipe which isn't right
         for i in range(len(board.board)):
             for j in range(len(board.board[i])):
                 if not board.is_right(i, j):
-                    wrong_pipe_pos = (i, j)
-                    break
-            if wrong_pipe_pos != 0:
-                break
+                    current_wrong_pipe_pos = (i, j)
+                    current_wrong_pipe_possibilities = get_possibilities(state, current_wrong_pipe_pos)
+                    if len(current_wrong_pipe_possibilities) < len(wrong_pipe_possibilities):
+                        wrong_pipe_possibilities = current_wrong_pipe_possibilities
+                        wrong_pipe_pos = current_wrong_pipe_pos
+                    
+                    if (len(wrong_pipe_possibilities) == 0):
+                        return []
+                    
+                    elif (len(wrong_pipe_possibilities) == 1):
+                        # Make inferences on the board
+                        if not make_inferences(state, wrong_pipe_pos):
+                            return []
 
         if wrong_pipe_pos == 0:
             return []
-        
-        # Start the algorithmic part
-        stack = [wrong_pipe_pos]
-        max_count = (state.board.columns*state.board.lines) * 0.15
-        count = 0
 
-        while len(stack) > 0 and count <= max_count:
-            count += 1
-            current_pos = stack.pop()
-            if(not board.is_right(current_pos[0], current_pos[1])):
+        if(not board.is_right(wrong_pipe_pos[0], wrong_pipe_pos[1])):
                 state.right_counter += 1
-
-            board.set_right(current_pos[0], current_pos[1], '1')
-
-            # Get the adjacent values
-            adjacent_values = board.adjacent_values(current_pos[0], current_pos[1])
-            adjacent_positions = board.adjacent_positions(current_pos[0], current_pos[1])
-
-            top_rot = bot_rot = right_rot = left_rot = OFF
-
-            # Get the possible rotations
-            if adjacent_values[0]:
-                top_rot = adjacent_values[0][1] if board.is_right(adjacent_positions[0][0], adjacent_positions[0][1]) else UNKNOWN
-            if adjacent_values[1]:
-                bot_rot = adjacent_values[1][0] if board.is_right(adjacent_positions[1][0], adjacent_positions[1][1]) else UNKNOWN
-            if adjacent_values[2]:
-                right_rot = adjacent_values[2][3] if board.is_right(adjacent_positions[2][0], adjacent_positions[2][1]) else UNKNOWN
-            if adjacent_values[3]:
-                left_rot = adjacent_values[3][2] if board.is_right(adjacent_positions[3][0], adjacent_positions[3][1]) else UNKNOWN
-
-            possibilities = get_possible_rotations(board.get_id(current_pos[0], current_pos[1]),top_rot, bot_rot, right_rot, left_rot)
-            
-            # If there is only one possibility, rotate the pipe and add the adjacent pipes to the stack
-            if len(possibilities) == 1:
-                board.rotate([current_pos,possibilities[0]])
-                if adjacent_values[0] and not board.is_right(adjacent_positions[0][0], adjacent_positions[0][1]):
-                    stack.append((current_pos[0] - 1, current_pos[1]))
-                if adjacent_values[1] and not board.is_right(adjacent_positions[1][0], adjacent_positions[1][1]):
-                    stack.append((current_pos[0] + 1, current_pos[1]))
-                if adjacent_values[2] and not board.is_right(adjacent_positions[2][0], adjacent_positions[2][1]):
-                    stack.append((current_pos[0], current_pos[1] + 1))
-                if adjacent_values[3] and not board.is_right(adjacent_positions[3][0], adjacent_positions[3][1]):
-                    stack.append((current_pos[0], current_pos[1] - 1))
-            elif len(possibilities) == 0:
-                state.right_counter -= 1
-                return []
-            else:
-                board.set_right(current_pos[0], current_pos[1], '0')
-                state.right_counter -= 1
-
-
-        if(not board.is_right(current_pos[0], current_pos[1])):
-                state.right_counter += 1
-        board.set_right(current_pos[0], current_pos[1], '1')
+        board.set_right(wrong_pipe_pos[0], wrong_pipe_pos[1], '1')
         
-        return [[current_pos, possibility] for possibility in possibilities]
+        return [[wrong_pipe_pos, possibility] for possibility in wrong_pipe_possibilities]
             
 
     '''
@@ -313,7 +336,7 @@ class PipeMania(Problem):
     def goal_test(self, state: PipeManiaState):
         stack = [(0, 0)]  
         visited = set()
-
+        
         if state.right_counter != state.board.columns*state.board.lines:
             return False
 
@@ -355,12 +378,29 @@ class PipeMania(Problem):
     Heuristic function used in A*
     '''
     def h(self, node: Node):
-        pass
+        board = node.state.board
+        if not node.action:
+            return 0
+        position = node.action[0]
+        rotation = node.action[1]
+
+        adjacent_values = board.adjacent_values(position[0], position[1])
+        off_count = 0
+        if adjacent_values[0] and adjacent_values[0][1] == ON == rotation[0]:
+            off_count += adjacent_values[0].count(OFF)
+        if adjacent_values[1] and adjacent_values[1][0] == ON == rotation[1]:
+            off_count += adjacent_values[1].count(OFF)
+        if adjacent_values[2] and adjacent_values[2][3] == ON == rotation[2]:    
+            off_count += adjacent_values[2].count(OFF)
+        if adjacent_values[3] and adjacent_values[3][2] == ON == rotation[3]:
+            off_count += adjacent_values[3].count(OFF)
+                
+        return off_count
 
 if __name__ == "__main__":
     b1 = Board.parse_instance()
     problem = PipeMania(b1)
-    goal_node = depth_first_tree_search(problem)
+    goal_node = greedy_search(problem)
     if goal_node:
         goal_node.state.board.print_board_id()
     else:
