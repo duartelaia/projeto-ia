@@ -143,7 +143,6 @@ class Board:
         rotation = tuple(action[1])
         self.board[position[0]][position[1]] = bits_to_pipes[rotation] + self.board[position[0]][position[1]][2]
 
-
     def adjacent_values(self, row: int, col: int) -> tuple:
         '''
         Returns the pipes directly up and down
@@ -186,7 +185,13 @@ class Board:
 
     @staticmethod
     def copy_board(board):
-        return Board(np.copy(board.board))
+        new_b = []
+        for i in range(board.lines):
+            new_l = []
+            for j in range(board.columns):
+                new_l.append(board.board[i][j])
+            new_b.append(new_l)
+        return Board(np.array(new_b, dtype='<U3'))
 
     '''
     Reads the instance of the problem from stdin and
@@ -391,29 +396,51 @@ class PipeMania(Problem):
     Heuristic function used in A*
     '''
     def h(self, node: Node):
-        board = node.state.board
-        if not node.action:
-            return 0
-        position = node.action[0]
-        rotation = node.action[1]
 
-        adjacent_values = board.adjacent_values(position[0], position[1])
-        off_count = 0
-        if adjacent_values[0] and adjacent_values[0][1] == ON == rotation[0]:
-            off_count += adjacent_values[0].count(OFF)
-        if adjacent_values[1] and adjacent_values[1][0] == ON == rotation[1]:
-            off_count += adjacent_values[1].count(OFF)
-        if adjacent_values[2] and adjacent_values[2][3] == ON == rotation[2]:    
-            off_count += adjacent_values[2].count(OFF)
-        if adjacent_values[3] and adjacent_values[3][2] == ON == rotation[3]:
-            off_count += adjacent_values[3].count(OFF)
-                
-        return off_count/rotation.count(ON)
+        if node.action == None:
+            return 0
+        
+        stack = [node.action[0]]  
+        visited = set()
+        state = node.state
+
+        while stack:
+            row, col = stack.pop()
+            if (row, col) in visited:
+                continue
+            visited.add((row, col))
+
+            # Get the current pipe and its adjacent values
+            current_pipe = state.board.get_value(row, col)
+            adjacent_values = state.board.adjacent_values(row, col)
+
+            # Check if there is an invalid connection. If there is a connection and it isnt invalid, add to the stack
+            if (adjacent_values[0] is None and current_pipe[0] == ON) or (adjacent_values[0] and (adjacent_values[0][1] != current_pipe[0])):
+                continue
+            elif current_pipe[0] == ON and (row - 1, col) not in visited:
+                stack.append((row - 1, col))
+
+            if (adjacent_values[1] is None and current_pipe[1] == ON) or (adjacent_values[1] and (adjacent_values[1][0] != current_pipe[1])):
+                continue
+            elif current_pipe[1] == ON and (row + 1, col) not in visited:
+                stack.append((row + 1, col))
+
+            if (adjacent_values[2] is None and current_pipe[2] == ON) or (adjacent_values[2] and (adjacent_values[2][3] != current_pipe[2])):
+                continue
+            elif current_pipe[2] == ON and (row, col + 1) not in visited:
+                stack.append((row, col + 1))
+
+            if (adjacent_values[3] is None and current_pipe[3] == ON) or (adjacent_values[3] and (adjacent_values[3][2] != current_pipe[3])):
+                continue
+            elif current_pipe[3] == ON and (row, col - 1) not in visited:
+                stack.append((row, col - 1))
+
+        return -len(visited)
 
 if __name__ == "__main__":
     b1 = Board.parse_instance()
     problem = PipeMania(b1)
-    goal_node = astar_search(problem)
+    goal_node = greedy_search(problem)
     if goal_node:
         goal_node.state.board.print_board_id()
     else:

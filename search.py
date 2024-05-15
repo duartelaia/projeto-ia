@@ -102,8 +102,9 @@ class Node:
         """[Figure 3.10]"""
         next_state = problem.result(self.state, action)
         next_node = Node(next_state, self, action, problem.path_cost(self.path_cost, self.state, action, next_state))
-        #self.state.board.print_board_id()
-        #print(problem.h(next_node))
+        #print('a:',next_node.action)
+        #print('h:', problem.h(next_node))
+        #next_state.board.print_board_id()
         return next_node
 
     def solution(self):
