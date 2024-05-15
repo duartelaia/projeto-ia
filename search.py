@@ -93,13 +93,17 @@ class Node:
 
     def expand(self, problem):
         """List the nodes reachable in one step from this node."""
-        return [self.child_node(problem, action)
+        a = [self.child_node(problem, action)
                 for action in problem.actions(self.state)]
+        #print('a:', len(a), '\n')
+        return a
 
     def child_node(self, problem, action):
         """[Figure 3.10]"""
         next_state = problem.result(self.state, action)
         next_node = Node(next_state, self, action, problem.path_cost(self.path_cost, self.state, action, next_state))
+        #self.state.board.print_board_id()
+        #print(problem.h(next_node))
         return next_node
 
     def solution(self):

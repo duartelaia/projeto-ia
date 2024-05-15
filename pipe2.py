@@ -290,29 +290,40 @@ class PipeMania(Problem):
 
         board = state.board
 
-        wrong_pipe_pos = 0
-        wrong_pipe_possibilities = [0, 0, 0, 0, 0]
+        restart = False
 
-        # Check if there is a pipe which isn't right
-        for i in range(len(board.board)):
-            for j in range(len(board.board[i])):
-                if not board.is_right(i, j):
-                    current_wrong_pipe_pos = (i, j)
-                    current_wrong_pipe_possibilities = get_possibilities(state, current_wrong_pipe_pos)
-                    if len(current_wrong_pipe_possibilities) < len(wrong_pipe_possibilities):
-                        wrong_pipe_possibilities = current_wrong_pipe_possibilities
-                        wrong_pipe_pos = current_wrong_pipe_pos
-                    
-                    if (len(wrong_pipe_possibilities) == 0):
-                        return []
-                    
-                    elif (len(wrong_pipe_possibilities) == 1):
-                        # Make inferences on the board
-                        if not make_inferences(state, wrong_pipe_pos):
+        while True:
+            wrong_pipe_pos = 0
+            wrong_pipe_possibilities = [0, 0, 0, 0, 0]
+
+            # Check if there is a pipe which isn't right
+            for i in range(len(board.board)):
+                for j in range(len(board.board[i])):
+                    if not board.is_right(i, j):
+                        current_wrong_pipe_pos = (i, j)
+                        current_wrong_pipe_possibilities = get_possibilities(state, current_wrong_pipe_pos)
+                        if len(current_wrong_pipe_possibilities) < len(wrong_pipe_possibilities):
+                            wrong_pipe_possibilities = current_wrong_pipe_possibilities
+                            wrong_pipe_pos = current_wrong_pipe_pos
+                        
+                        if (len(wrong_pipe_possibilities) == 0):
                             return []
+                        
+                        elif (len(wrong_pipe_possibilities) == 1):
+                            # Make inferences on the board
+                            if not make_inferences(state, wrong_pipe_pos):
+                                return []
+                            restart = True
+                            break
+                if restart:
+                    break
+
+            restart = False
+            if (i == board.lines - 1 and j == board.columns - 1):
+                break
 
         if wrong_pipe_pos == 0:
-            return []
+            return [[(0,0), parse_pipe_to_bits(board.board[0][0])]]
 
         if(not board.is_right(wrong_pipe_pos[0], wrong_pipe_pos[1])):
                 state.right_counter += 1
@@ -342,6 +353,8 @@ class PipeMania(Problem):
 
         while stack:
             row, col = stack.pop()
+            if (row, col) in visited:
+                continue
             visited.add((row, col))
 
             # Get the current pipe and its adjacent values
@@ -395,12 +408,12 @@ class PipeMania(Problem):
         if adjacent_values[3] and adjacent_values[3][2] == ON == rotation[3]:
             off_count += adjacent_values[3].count(OFF)
                 
-        return off_count
+        return off_count/rotation.count(ON)
 
 if __name__ == "__main__":
     b1 = Board.parse_instance()
     problem = PipeMania(b1)
-    goal_node = greedy_search(problem)
+    goal_node = astar_search(problem)
     if goal_node:
         goal_node.state.board.print_board_id()
     else:
